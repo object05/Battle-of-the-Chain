@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2015",
+    "sourceMap": true,
+    "outDir": "./build"
+  },
+  "include": [
+    "src/main.ts",
+    "src/block.ts",
+    "src/p2p.ts",
+    "src/util.ts",
+    "src/transaction.ts",
+    "src/wallet.ts",
+    "src/transactionPool.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
