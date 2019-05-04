@@ -116,12 +116,13 @@ const initMessageHandler = (ws: WebSocket) => {
 
                 case MessageType.RESPOND_CONSENT:
                     if(isMaster()){
-                        if(message.data == true){
+                        if(message.data == true){//TODOMAIN v json obliki je 'true' zaj pa nisem cist 100% kak to ven dobit
                             consentNum++;
                             if(consentNum == 3){//TODO better mechanism?
 								replaceChain(potential_chain);
                                 consentNum = 0;
                                 broadcastChainChange();
+								console.log('CHAIN CHANGED BY AUTHORITY!');
                             }
                         }
 

@@ -110,6 +110,7 @@ const initMessageHandler = (ws) => {
                                 blockchain_1.replaceChain(potential_chain);
                                 consentNum = 0;
                                 broadcastChainChange();
+                                console.log('CHAIN CHANGED BY AUTHORITY!');
                             }
                         }
                     }
