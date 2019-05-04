@@ -9,9 +9,12 @@ import {getTransactionPool} from './transactionPool';
 import {getTransactionPoolVictoryPoints} from './transactionPoolVictoryPoints';
 import {isAuthorized, isMaster, getMyPort} from './main'
 
+//GLOBALS
 const sockets: WebSocket[] = [];
+var potential_chain: Block[];
 var consentNum = 0;
 const masterSocket = new WebSocket('ws://localhost:6001')
+//_______
 
 enum MessageType {
     QUERY_LATEST = 0,
@@ -115,7 +118,8 @@ const initMessageHandler = (ws: WebSocket) => {
                     if(isMaster()){
                         if(message.data == true){
                             consentNum++;
-                            if(consentNum == 3){//TODO sender to json (check source of message for vote %)
+                            if(consentNum == 3){//TODO better mechanism?
+								replaceChain(potential_chain);
                                 consentNum = 0;
                                 broadcastChainChange();
                             }
@@ -188,7 +192,7 @@ const respondConsent = (): Message => ({
 
 const forceChain = (): Message => ({
     'type':MessageType.FORCE_CHAIN,
-    'data': JSON.stringify(getBlockchain())//TODO namesto blockchain bi moglo poslat chain katerega smo preverjali in dobili strinjanje
+    'data': JSON.stringify(getBlockchain())
 });
 
 
@@ -259,9 +263,9 @@ const handleBlockchainResponse = (receivedBlocks: Block[]) => {
             } else {
                 console.log('Received blockchain is longer than current blockchain');
                 //broadcastConsentReply(true);
-                if(isMaster()){
-                    replaceChain(receivedBlocks);
-                }
+				if(isMaster()){
+					potential_chain = receivedBlocks;
+				}
                 sendToMain(respondConsent());//tud sam sebi poslje da forca vsem change (v handlerju se to zgodi zato si poslje)
             }
         }
