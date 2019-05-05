@@ -51,6 +51,8 @@ const initConnection = (ws: WebSocket) => {
     initMessageHandler(ws);
     initErrorHandler(ws);
     write(ws, queryChainLengthMsg());
+	write(ws, forceChain());
+	
 
     // query transactions pool only some time after chain query
     setTimeout(() => {
@@ -89,7 +91,7 @@ const initMessageHandler = (ws: WebSocket) => {
                         console.log('invalid blocks received: %s', JSON.stringify(message.data, null, 2));
                         break;
                     }
-                    handleBlockchainResponse(receivedBlocks);
+                    handleBlockchainResponse2(receivedBlocks);
                     break;
                 case MessageType.QUERY_TRANSACTION_POOL:
                     write(ws, responseTransactionPoolMsg());
@@ -116,6 +118,7 @@ const initMessageHandler = (ws: WebSocket) => {
 
                 case MessageType.RESPOND_CONSENT:
                     if(isMaster()){
+						
                         if(message.data == true){//TODOMAIN v json obliki je 'true' zaj pa nisem cist 100% kak to ven dobit
                             consentNum++;
                             if(consentNum == 3){//TODO better mechanism?
@@ -178,7 +181,9 @@ const write = (ws: WebSocket, message: Message): void => ws.send(JSON.stringify(
 const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));
 const sendToMain = (message: Message): void => write(masterSocket,message);
 
+
 const queryChainLengthMsg = (): Message => ({'type': MessageType.QUERY_LATEST, 'data': null});
+
 
 const queryAllMsg = (): Message => ({'type': MessageType.QUERY_ALL, 'data': null});
 
@@ -274,6 +279,45 @@ const handleBlockchainResponse = (receivedBlocks: Block[]) => {
         //     replaceChain(receivedBlocks);
         // }
     }
+};
+
+const handleBlockchainResponse2 = (receivedBlocks: Block[]) => {
+        if (receivedBlocks.length === 0) {
+            console.log('received block chain size of 0');
+            return;
+        }
+			const latestBlockReceived: Block = receivedBlocks[receivedBlocks.length - 1];
+			if (!isValidBlockStructure(latestBlockReceived)) {
+				console.log('block structuture not valid');
+				return;
+			}
+			const latestBlockHeld: Block = getLatestBlock();
+			if (latestBlockReceived.index > latestBlockHeld.index) {
+				console.log("we were here_________________________________________________________________");
+				if (latestBlockHeld.hash === latestBlockReceived.previousHash) {
+					if (addBlockToChain(latestBlockReceived)) {
+						console.log("we were here2_________________________________________________________________");
+						broadcast(responseLatestMsg());
+					}
+				} else if (receivedBlocks.length === 1) {
+					console.log("we were here3_________________________________________________________________");
+					console.log('We have to query the chain from our peer');
+					broadcast(queryAllMsg());
+				} else {
+					if(isAuthorized()){
+						console.log('Received blockchain is longer than current blockchain');
+						//broadcastConsentReply(true);
+						if(isMaster()){
+							potential_chain = receivedBlocks;
+						}
+						sendToMain(respondConsent());//tud sam sebi poslje da forca vsem change (v handlerju se to zgodi zato si poslje)
+					}
+				}
+			}
+		
+        // else {
+        //     replaceChain(receivedBlocks);
+        // }
 };
 
 const broadcastLatest = (): void => {

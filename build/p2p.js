@@ -42,6 +42,7 @@ const initConnection = (ws) => {
     initMessageHandler(ws);
     initErrorHandler(ws);
     write(ws, queryChainLengthMsg());
+    write(ws, forceChain());
     // query transactions pool only some time after chain query
     setTimeout(() => {
         broadcast(queryTransactionPoolMsg());
@@ -78,7 +79,7 @@ const initMessageHandler = (ws) => {
                         console.log('invalid blocks received: %s', JSON.stringify(message.data, null, 2));
                         break;
                     }
-                    handleBlockchainResponse(receivedBlocks);
+                    handleBlockchainResponse2(receivedBlocks);
                     break;
                 case MessageType.QUERY_TRANSACTION_POOL:
                     write(ws, responseTransactionPoolMsg());
@@ -245,6 +246,45 @@ const handleBlockchainResponse = (receivedBlocks) => {
         //     replaceChain(receivedBlocks);
         // }
     }
+};
+const handleBlockchainResponse2 = (receivedBlocks) => {
+    if (receivedBlocks.length === 0) {
+        console.log('received block chain size of 0');
+        return;
+    }
+    const latestBlockReceived = receivedBlocks[receivedBlocks.length - 1];
+    if (!blockchain_1.isValidBlockStructure(latestBlockReceived)) {
+        console.log('block structuture not valid');
+        return;
+    }
+    const latestBlockHeld = blockchain_1.getLatestBlock();
+    if (latestBlockReceived.index > latestBlockHeld.index) {
+        console.log("we were here_________________________________________________________________");
+        if (latestBlockHeld.hash === latestBlockReceived.previousHash) {
+            if (blockchain_1.addBlockToChain(latestBlockReceived)) {
+                console.log("we were here2_________________________________________________________________");
+                broadcast(responseLatestMsg());
+            }
+        }
+        else if (receivedBlocks.length === 1) {
+            console.log("we were here3_________________________________________________________________");
+            console.log('We have to query the chain from our peer');
+            broadcast(queryAllMsg());
+        }
+        else {
+            if (main_1.isAuthorized()) {
+                console.log('Received blockchain is longer than current blockchain');
+                //broadcastConsentReply(true);
+                if (main_1.isMaster()) {
+                    potential_chain = receivedBlocks;
+                }
+                sendToMain(respondConsent()); //tud sam sebi poslje da forca vsem change (v handlerju se to zgodi zato si poslje)
+            }
+        }
+    }
+    // else {
+    //     replaceChain(receivedBlocks);
+    // }
 };
 const broadcastLatest = () => {
     broadcast(responseLatestMsg());
